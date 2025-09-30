@@ -1,16 +1,16 @@
-import { useState } from 'react';
-import { Header } from './components/Header';
-import { ModeToggle } from './components/ModeToggle';
-import { InteractiveBuilder } from './components/InteractiveBuilder';
-import { CodeEditor } from './components/CodeEditor';
-import { QuantumComputerSelector } from './components/QuantumComputerSelector';
-import { ExecutionPanel } from './components/ExecutionPanel';
-import { LoadingScreen } from './components/LoadingScreen';
-import { ResultsVisualization } from './components/ResultsVisualization';
-import { ExampleCircuits } from './components/ExampleCircuits';
-import { useCircuit } from './hooks/useCircuit';
-import { executeCircuit } from './utils/mockApi';
-import { ExecutionResult, CircuitState } from './types/circuit';
+import { useState } from "react";
+import { Header } from "./components/Header";
+import { ModeToggle } from "./components/ModeToggle";
+import { InteractiveBuilder } from "./components/InteractiveBuilder";
+import { CodeEditor } from "./components/CodeEditor";
+import { QuantumComputerSelector } from "./components/QuantumComputerSelector";
+import { ExecutionPanel } from "./components/ExecutionPanel";
+import { LoadingScreen } from "./components/LoadingScreen";
+import { ResultsVisualization } from "./components/ResultsVisualization";
+import { ExampleCircuits } from "./components/ExampleCircuits";
+import { useCircuit } from "./hooks/useCircuit";
+import { executeCircuit } from "./utils/mockApi";
+import { ExecutionResult } from "./types/circuit";
 
 function App() {
   const {
@@ -26,6 +26,7 @@ function App() {
     clearCircuit,
     setNumQubits,
     loadCircuit,
+    compactCircuit,
   } = useCircuit();
 
   const [isRunning, setIsRunning] = useState(false);
@@ -45,7 +46,7 @@ function App() {
       );
       setResult(executionResult);
     } catch (error) {
-      console.error('Execution failed:', error);
+      console.error("Execution failed:", error);
     } finally {
       setIsRunning(false);
       setProgress(0);
@@ -66,7 +67,9 @@ function App() {
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">Build Your Circuit</h2>
+            <h2 className="text-2xl font-bold text-gray-800">
+              Build Your Circuit
+            </h2>
             <p className="text-gray-600 mt-1">
               Create quantum circuits visually or with code
             </p>
@@ -76,7 +79,7 @@ function App() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2">
-            {viewMode === 'interactive' ? (
+            {viewMode === "interactive" ? (
               <InteractiveBuilder
                 circuit={circuit}
                 onAddGate={addGate}
@@ -103,6 +106,7 @@ function App() {
               selectedComputer={selectedQuantumComputer}
               onRun={handleRun}
               onClear={clearCircuit}
+              onCompact={compactCircuit}
               isRunning={isRunning}
             />
           </div>
@@ -118,9 +122,12 @@ function App() {
                 1
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800 mb-1">Select Gates</h4>
+                <h4 className="font-semibold text-gray-800 mb-1">
+                  Select Gates
+                </h4>
                 <p className="text-gray-600">
-                  Choose from the gate library and click on the circuit to place them
+                  Choose from the gate library and click on the circuit to place
+                  them
                 </p>
               </div>
             </div>
@@ -129,7 +136,9 @@ function App() {
                 2
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800 mb-1">Pick a Computer</h4>
+                <h4 className="font-semibold text-gray-800 mb-1">
+                  Pick a Computer
+                </h4>
                 <p className="text-gray-600">
                   Start with the simulator, then try real quantum hardware
                 </p>
@@ -140,7 +149,9 @@ function App() {
                 3
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800 mb-1">Run & Explore</h4>
+                <h4 className="font-semibold text-gray-800 mb-1">
+                  Run & Explore
+                </h4>
                 <p className="text-gray-600">
                   Execute your circuit and compare expected vs actual results
                 </p>
@@ -151,10 +162,15 @@ function App() {
       </div>
 
       {isRunning && (
-        <LoadingScreen computerType={selectedQuantumComputer} progress={progress} />
+        <LoadingScreen
+          computerType={selectedQuantumComputer}
+          progress={progress}
+        />
       )}
 
-      {result && <ResultsVisualization result={result} onClose={() => setResult(null)} />}
+      {result && (
+        <ResultsVisualization result={result} onClose={() => setResult(null)} />
+      )}
     </div>
   );
 }

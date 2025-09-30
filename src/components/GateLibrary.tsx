@@ -1,25 +1,36 @@
-import { Info } from 'lucide-react';
-import { gateDefinitions, getGatesByCategory } from '../data/gateDefinitions';
-import { GateType } from '../types/circuit';
-import { useState } from 'react';
+import { Info } from "lucide-react";
+import { getGatesByCategory } from "../data/gateDefinitions";
+import { GateType } from "../types/circuit";
+import { useState } from "react";
 
 interface GateLibraryProps {
   onGateSelect: (gateType: GateType) => void;
+  onGateDragStart?: (gateType: GateType) => void;
+  onGateDragEnd?: () => void;
 }
 
-export function GateLibrary({ onGateSelect }: GateLibraryProps) {
+export function GateLibrary({
+  onGateSelect,
+  onGateDragStart,
+  onGateDragEnd,
+}: GateLibraryProps) {
   const [hoveredGate, setHoveredGate] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const singleQubitGates = getGatesByCategory('single');
-  const rotationGates = getGatesByCategory('rotation');
-  const controlledGates = getGatesByCategory('controlled');
+  const singleQubitGates = getGatesByCategory("single");
+  const rotationGates = getGatesByCategory("rotation");
+  const controlledGates = getGatesByCategory("controlled");
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">Gate Library</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-3">
+          Gate Library
+        </h3>
         <p className="text-sm text-gray-600 mb-4">
-          Drag gates onto the circuit or click to add them
+          {isDragging
+            ? "Drop the gate on the circuit!"
+            : "Drag gates onto the circuit or click to select"}
         </p>
       </div>
 
@@ -33,10 +44,21 @@ export function GateLibrary({ onGateSelect }: GateLibraryProps) {
             {singleQubitGates.map((gate) => (
               <div key={gate.type} className="relative">
                 <button
+                  draggable
                   onClick={() => onGateSelect(gate.type)}
                   onMouseEnter={() => setHoveredGate(gate.type)}
                   onMouseLeave={() => setHoveredGate(null)}
-                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md`}
+                  onDragStart={(e) => {
+                    setIsDragging(true);
+                    e.dataTransfer.setData("gate-type", gate.type);
+                    e.dataTransfer.effectAllowed = "copy";
+                    onGateDragStart?.(gate.type);
+                  }}
+                  onDragEnd={() => {
+                    setIsDragging(false);
+                    onGateDragEnd?.();
+                  }}
+                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md cursor-grab active:cursor-grabbing`}
                 >
                   <div className="text-lg">{gate.icon}</div>
                   <div className="text-xs mt-1">{gate.name}</div>
@@ -67,10 +89,21 @@ export function GateLibrary({ onGateSelect }: GateLibraryProps) {
             {rotationGates.map((gate) => (
               <div key={gate.type} className="relative">
                 <button
+                  draggable
                   onClick={() => onGateSelect(gate.type)}
                   onMouseEnter={() => setHoveredGate(gate.type)}
                   onMouseLeave={() => setHoveredGate(null)}
-                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md`}
+                  onDragStart={(e) => {
+                    setIsDragging(true);
+                    e.dataTransfer.setData("gate-type", gate.type);
+                    e.dataTransfer.effectAllowed = "copy";
+                    onGateDragStart?.(gate.type);
+                  }}
+                  onDragEnd={() => {
+                    setIsDragging(false);
+                    onGateDragEnd?.();
+                  }}
+                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md cursor-grab active:cursor-grabbing`}
                 >
                   <div className="text-lg">{gate.icon}</div>
                   <div className="text-xs mt-1">{gate.name}</div>
@@ -101,10 +134,21 @@ export function GateLibrary({ onGateSelect }: GateLibraryProps) {
             {controlledGates.map((gate) => (
               <div key={gate.type} className="relative">
                 <button
+                  draggable
                   onClick={() => onGateSelect(gate.type)}
                   onMouseEnter={() => setHoveredGate(gate.type)}
                   onMouseLeave={() => setHoveredGate(null)}
-                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md`}
+                  onDragStart={(e) => {
+                    setIsDragging(true);
+                    e.dataTransfer.setData("gate-type", gate.type);
+                    e.dataTransfer.effectAllowed = "copy";
+                    onGateDragStart?.(gate.type);
+                  }}
+                  onDragEnd={() => {
+                    setIsDragging(false);
+                    onGateDragEnd?.();
+                  }}
+                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md cursor-grab active:cursor-grabbing`}
                 >
                   <div className="text-lg">{gate.icon}</div>
                   <div className="text-xs mt-1">{gate.name}</div>
@@ -130,7 +174,8 @@ export function GateLibrary({ onGateSelect }: GateLibraryProps) {
       <div className="pt-4 border-t border-gray-200">
         <div className="bg-cyan-50 rounded-lg p-3">
           <p className="text-xs text-cyan-800">
-            <strong>Tip:</strong> Hover over gates to learn what they do. Start with the Hadamard (H) gate to create superposition!
+            <strong>Tip:</strong> Hover over gates to learn what they do. Start
+            with the Hadamard (H) gate to create superposition!
           </p>
         </div>
       </div>

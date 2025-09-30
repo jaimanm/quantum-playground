@@ -1,11 +1,21 @@
 export type GateType =
-  | 'H' | 'X' | 'Y' | 'Z'
-  | 'S' | 'T' | 'Sdg' | 'Tdg'
-  | 'RX' | 'RY' | 'RZ'
-  | 'CNOT' | 'CZ' | 'SWAP'
-  | 'Toffoli';
+  | "H"
+  | "X"
+  | "Y"
+  | "Z"
+  | "S"
+  | "T"
+  | "Sdg"
+  | "Tdg"
+  | "RX"
+  | "RY"
+  | "RZ"
+  | "CNOT"
+  | "CZ"
+  | "SWAP"
+  | "Toffoli";
 
-export type GateCategory = 'single' | 'controlled' | 'rotation';
+export type GateCategory = "single" | "controlled" | "rotation";
 
 export interface Gate {
   id: string;
@@ -58,10 +68,7 @@ export interface ExecutionResult {
   summary?: string;
 }
 
-export type QuantumComputerType =
-  | 'simulator'
-  | 'ion-trap'
-  | 'superconducting';
+export type QuantumComputerType = "simulator" | "ion-trap" | "superconducting";
 
 export interface QuantumComputer {
   id: string;
@@ -75,11 +82,11 @@ export interface QuantumComputer {
 }
 
 export type CodeFramework =
-  | 'qiskit'
-  | 'pennylane'
-  | 'cirq'
-  | 'qsharp'
-  | 'braket';
+  | "qiskit"
+  | "pennylane"
+  | "cirq"
+  | "qsharp"
+  | "braket";
 
 export interface GateDefinition {
   type: GateType;
@@ -91,6 +98,7 @@ export interface GateDefinition {
   numQubits: number;
   hasParams: boolean;
   tooltip: string;
+  controlCount?: number;
 }
 
-export type ViewMode = 'interactive' | 'code';
+export type ViewMode = "interactive" | "code";
