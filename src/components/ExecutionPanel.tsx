@@ -5,8 +5,8 @@ import { getQuantumComputer } from "../data/quantumComputers";
 interface ExecutionPanelProps {
   circuit: CircuitState;
   selectedComputer: QuantumComputerType;
-  onRun: () => void;
-  onClear: () => void;
+  onRun?: () => void;
+  onClear?: () => void;
   onCompact?: () => void;
   isRunning: boolean;
 }
@@ -59,29 +59,33 @@ export function ExecutionPanel({
         </div>
 
         <div className="space-y-2">
-          <button
-            onClick={onRun}
-            disabled={!canRun || isRunning}
-            className={`w-full flex items-center justify-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-all ${
-              canRun && !isRunning
-                ? "bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-md hover:shadow-lg transform hover:scale-105"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            {isRunning ? (
-              <>
-                <RotateCcw className="w-5 h-5 animate-spin" />
-                <span>Running...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-5 h-5" />
-                <span>Run Circuit</span>
-              </>
-            )}
-          </button>
+          {onRun && (
+            <button
+              onClick={onRun}
+              disabled={!canRun || isRunning}
+              className={`w-full flex items-center justify-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+                canRun && !isRunning
+                  ? "bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-md hover:shadow-lg transform hover:scale-105"
+                  : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              {isRunning ? (
+                <>
+                  <RotateCcw className="w-5 h-5 animate-spin" />
+                  <span>Running...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-5 h-5" />
+                  <span>Run Circuit</span>
+                </>
+              )}
+            </button>
+          )}
 
-          <div className="grid grid-cols-2 gap-2">
+          <div
+            className={`grid grid-cols-2 gap-2 ${!onRun ? "grid-cols-1" : ""}`}
+          >
             {onCompact && (
               <button
                 onClick={onCompact}
@@ -92,16 +96,18 @@ export function ExecutionPanel({
                 <span>Compact</span>
               </button>
             )}
-            <button
-              onClick={onClear}
-              disabled={circuit.gates.length === 0 || isRunning}
-              className={`flex items-center justify-center space-x-1 px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
-                !onCompact ? "col-span-2" : ""
-              }`}
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Clear</span>
-            </button>
+            {onClear && (
+              <button
+                onClick={onClear}
+                disabled={circuit.gates.length === 0 || isRunning}
+                className={`flex items-center justify-center space-x-1 px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
+                  !onCompact ? "col-span-2" : ""
+                }`}
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Clear</span>
+              </button>
+            )}
           </div>
         </div>
 

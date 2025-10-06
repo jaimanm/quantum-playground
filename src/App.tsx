@@ -7,7 +7,6 @@ import { QuantumComputerSelector } from "./components/QuantumComputerSelector";
 import { ExecutionPanel } from "./components/ExecutionPanel";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { ResultsVisualization } from "./components/ResultsVisualization";
-import { ExampleCircuits } from "./components/ExampleCircuits";
 import { useCircuit } from "./hooks/useCircuit";
 import { executeCircuit } from "./utils/mockApi";
 import { ExecutionResult } from "./types/circuit";
@@ -62,7 +61,14 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <Header />
+      <Header
+        circuit={circuit}
+        selectedComputer={selectedQuantumComputer}
+        onLoadExample={loadCircuit}
+        onRun={handleRun}
+        onClear={clearCircuit}
+        isRunning={isRunning}
+      />
 
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
@@ -96,7 +102,6 @@ function App() {
           </div>
 
           <div className="space-y-6">
-            <ExampleCircuits onLoad={loadCircuit} />
             <QuantumComputerSelector
               selected={selectedQuantumComputer}
               onSelect={setSelectedQuantumComputer}
@@ -104,8 +109,6 @@ function App() {
             <ExecutionPanel
               circuit={circuit}
               selectedComputer={selectedQuantumComputer}
-              onRun={handleRun}
-              onClear={clearCircuit}
               onCompact={compactCircuit}
               isRunning={isRunning}
             />

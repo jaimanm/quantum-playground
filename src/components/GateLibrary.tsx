@@ -5,17 +5,10 @@ import { useState } from "react";
 
 interface GateLibraryProps {
   onGateSelect: (gateType: GateType) => void;
-  onGateDragStart?: (gateType: GateType) => void;
-  onGateDragEnd?: () => void;
 }
 
-export function GateLibrary({
-  onGateSelect,
-  onGateDragStart,
-  onGateDragEnd,
-}: GateLibraryProps) {
+export function GateLibrary({ onGateSelect }: GateLibraryProps) {
   const [hoveredGate, setHoveredGate] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
 
   const singleQubitGates = getGatesByCategory("single");
   const rotationGates = getGatesByCategory("rotation");
@@ -28,9 +21,7 @@ export function GateLibrary({
           Gate Library
         </h3>
         <p className="text-sm text-gray-600 mb-4">
-          {isDragging
-            ? "Drop the gate on the circuit!"
-            : "Drag gates onto the circuit or click to select"}
+          Click on a gate to select it, then click on the circuit to place it.
         </p>
       </div>
 
@@ -44,21 +35,10 @@ export function GateLibrary({
             {singleQubitGates.map((gate) => (
               <div key={gate.type} className="relative">
                 <button
-                  draggable
                   onClick={() => onGateSelect(gate.type)}
                   onMouseEnter={() => setHoveredGate(gate.type)}
                   onMouseLeave={() => setHoveredGate(null)}
-                  onDragStart={(e) => {
-                    setIsDragging(true);
-                    e.dataTransfer.setData("gate-type", gate.type);
-                    e.dataTransfer.effectAllowed = "copy";
-                    onGateDragStart?.(gate.type);
-                  }}
-                  onDragEnd={() => {
-                    setIsDragging(false);
-                    onGateDragEnd?.();
-                  }}
-                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md cursor-grab active:cursor-grabbing`}
+                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md cursor-pointer`}
                 >
                   <div className="text-lg">{gate.icon}</div>
                   <div className="text-xs mt-1">{gate.name}</div>
@@ -89,21 +69,10 @@ export function GateLibrary({
             {rotationGates.map((gate) => (
               <div key={gate.type} className="relative">
                 <button
-                  draggable
                   onClick={() => onGateSelect(gate.type)}
                   onMouseEnter={() => setHoveredGate(gate.type)}
                   onMouseLeave={() => setHoveredGate(null)}
-                  onDragStart={(e) => {
-                    setIsDragging(true);
-                    e.dataTransfer.setData("gate-type", gate.type);
-                    e.dataTransfer.effectAllowed = "copy";
-                    onGateDragStart?.(gate.type);
-                  }}
-                  onDragEnd={() => {
-                    setIsDragging(false);
-                    onGateDragEnd?.();
-                  }}
-                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md cursor-grab active:cursor-grabbing`}
+                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md cursor-pointer`}
                 >
                   <div className="text-lg">{gate.icon}</div>
                   <div className="text-xs mt-1">{gate.name}</div>
@@ -134,21 +103,10 @@ export function GateLibrary({
             {controlledGates.map((gate) => (
               <div key={gate.type} className="relative">
                 <button
-                  draggable
                   onClick={() => onGateSelect(gate.type)}
                   onMouseEnter={() => setHoveredGate(gate.type)}
                   onMouseLeave={() => setHoveredGate(null)}
-                  onDragStart={(e) => {
-                    setIsDragging(true);
-                    e.dataTransfer.setData("gate-type", gate.type);
-                    e.dataTransfer.effectAllowed = "copy";
-                    onGateDragStart?.(gate.type);
-                  }}
-                  onDragEnd={() => {
-                    setIsDragging(false);
-                    onGateDragEnd?.();
-                  }}
-                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md cursor-grab active:cursor-grabbing`}
+                  className={`w-full ${gate.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-md cursor-pointer`}
                 >
                   <div className="text-lg">{gate.icon}</div>
                   <div className="text-xs mt-1">{gate.name}</div>

@@ -21,3 +21,18 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+backend/__pycache__/
+backend/*.pyc
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+backend/.coverage
+backend/htmlcov/
+*.lcov

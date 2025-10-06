@@ -1,4 +1,9 @@
-import { CircuitState, StateVector, Complex, MeasurementResult } from '../types/circuit';
+import {
+  CircuitState,
+  StateVector,
+  Complex,
+  MeasurementResult,
+} from "../types/circuit";
 
 export class QuantumSimulator {
   private numQubits: number;
@@ -11,50 +16,56 @@ export class QuantumSimulator {
 
   private initializeStateVector(): Complex[] {
     const size = Math.pow(2, this.numQubits);
-    const state: Complex[] = new Array(size).fill(null).map(() => ({ real: 0, imaginary: 0 }));
+    const state: Complex[] = new Array(size)
+      .fill(null)
+      .map(() => ({ real: 0, imaginary: 0 }));
     state[0] = { real: 1, imaginary: 0 };
     return state;
   }
 
-  private applyGate(gate: string, qubitIndices: number[], params?: { [key: string]: number }) {
+  private applyGate(
+    gate: string,
+    qubitIndices: number[],
+    params?: { [key: string]: number }
+  ) {
     switch (gate) {
-      case 'H':
+      case "H":
         this.hadamard(qubitIndices[0]);
         break;
-      case 'X':
+      case "X":
         this.pauliX(qubitIndices[0]);
         break;
-      case 'Y':
+      case "Y":
         this.pauliY(qubitIndices[0]);
         break;
-      case 'Z':
+      case "Z":
         this.pauliZ(qubitIndices[0]);
         break;
-      case 'S':
+      case "S":
         this.sGate(qubitIndices[0]);
         break;
-      case 'T':
+      case "T":
         this.tGate(qubitIndices[0]);
         break;
-      case 'RX':
+      case "RX":
         this.rotationX(qubitIndices[0], params?.angle || 0);
         break;
-      case 'RY':
+      case "RY":
         this.rotationY(qubitIndices[0], params?.angle || 0);
         break;
-      case 'RZ':
+      case "RZ":
         this.rotationZ(qubitIndices[0], params?.angle || 0);
         break;
-      case 'CNOT':
+      case "CNOT":
         this.cnot(qubitIndices[0], qubitIndices[1]);
         break;
-      case 'CZ':
+      case "CZ":
         this.cz(qubitIndices[0], qubitIndices[1]);
         break;
-      case 'SWAP':
+      case "SWAP":
         this.swap(qubitIndices[0], qubitIndices[1]);
         break;
-      case 'Toffoli':
+      case "Toffoli":
         this.toffoli(qubitIndices[0], qubitIndices[1], qubitIndices[2]);
         break;
     }
@@ -63,44 +74,80 @@ export class QuantumSimulator {
   private hadamard(qubit: number) {
     const factor = 1 / Math.sqrt(2);
     this.applySingleQubitGate(qubit, [
-      [{ real: factor, imaginary: 0 }, { real: factor, imaginary: 0 }],
-      [{ real: factor, imaginary: 0 }, { real: -factor, imaginary: 0 }],
+      [
+        { real: factor, imaginary: 0 },
+        { real: factor, imaginary: 0 },
+      ],
+      [
+        { real: factor, imaginary: 0 },
+        { real: -factor, imaginary: 0 },
+      ],
     ]);
   }
 
   private pauliX(qubit: number) {
     this.applySingleQubitGate(qubit, [
-      [{ real: 0, imaginary: 0 }, { real: 1, imaginary: 0 }],
-      [{ real: 1, imaginary: 0 }, { real: 0, imaginary: 0 }],
+      [
+        { real: 0, imaginary: 0 },
+        { real: 1, imaginary: 0 },
+      ],
+      [
+        { real: 1, imaginary: 0 },
+        { real: 0, imaginary: 0 },
+      ],
     ]);
   }
 
   private pauliY(qubit: number) {
     this.applySingleQubitGate(qubit, [
-      [{ real: 0, imaginary: 0 }, { real: 0, imaginary: -1 }],
-      [{ real: 0, imaginary: 1 }, { real: 0, imaginary: 0 }],
+      [
+        { real: 0, imaginary: 0 },
+        { real: 0, imaginary: -1 },
+      ],
+      [
+        { real: 0, imaginary: 1 },
+        { real: 0, imaginary: 0 },
+      ],
     ]);
   }
 
   private pauliZ(qubit: number) {
     this.applySingleQubitGate(qubit, [
-      [{ real: 1, imaginary: 0 }, { real: 0, imaginary: 0 }],
-      [{ real: 0, imaginary: 0 }, { real: -1, imaginary: 0 }],
+      [
+        { real: 1, imaginary: 0 },
+        { real: 0, imaginary: 0 },
+      ],
+      [
+        { real: 0, imaginary: 0 },
+        { real: -1, imaginary: 0 },
+      ],
     ]);
   }
 
   private sGate(qubit: number) {
     this.applySingleQubitGate(qubit, [
-      [{ real: 1, imaginary: 0 }, { real: 0, imaginary: 0 }],
-      [{ real: 0, imaginary: 0 }, { real: 0, imaginary: 1 }],
+      [
+        { real: 1, imaginary: 0 },
+        { real: 0, imaginary: 0 },
+      ],
+      [
+        { real: 0, imaginary: 0 },
+        { real: 0, imaginary: 1 },
+      ],
     ]);
   }
 
   private tGate(qubit: number) {
     const factor = 1 / Math.sqrt(2);
     this.applySingleQubitGate(qubit, [
-      [{ real: 1, imaginary: 0 }, { real: 0, imaginary: 0 }],
-      [{ real: 0, imaginary: 0 }, { real: factor, imaginary: factor }],
+      [
+        { real: 1, imaginary: 0 },
+        { real: 0, imaginary: 0 },
+      ],
+      [
+        { real: 0, imaginary: 0 },
+        { real: factor, imaginary: factor },
+      ],
     ]);
   }
 
@@ -108,8 +155,14 @@ export class QuantumSimulator {
     const cos = Math.cos(angle / 2);
     const sin = Math.sin(angle / 2);
     this.applySingleQubitGate(qubit, [
-      [{ real: cos, imaginary: 0 }, { real: 0, imaginary: -sin }],
-      [{ real: 0, imaginary: -sin }, { real: cos, imaginary: 0 }],
+      [
+        { real: cos, imaginary: 0 },
+        { real: 0, imaginary: -sin },
+      ],
+      [
+        { real: 0, imaginary: -sin },
+        { real: cos, imaginary: 0 },
+      ],
     ]);
   }
 
@@ -117,8 +170,14 @@ export class QuantumSimulator {
     const cos = Math.cos(angle / 2);
     const sin = Math.sin(angle / 2);
     this.applySingleQubitGate(qubit, [
-      [{ real: cos, imaginary: 0 }, { real: -sin, imaginary: 0 }],
-      [{ real: sin, imaginary: 0 }, { real: cos, imaginary: 0 }],
+      [
+        { real: cos, imaginary: 0 },
+        { real: -sin, imaginary: 0 },
+      ],
+      [
+        { real: sin, imaginary: 0 },
+        { real: cos, imaginary: 0 },
+      ],
     ]);
   }
 
@@ -126,8 +185,14 @@ export class QuantumSimulator {
     const cos = Math.cos(angle / 2);
     const sin = Math.sin(angle / 2);
     this.applySingleQubitGate(qubit, [
-      [{ real: cos, imaginary: -sin }, { real: 0, imaginary: 0 }],
-      [{ real: 0, imaginary: 0 }, { real: cos, imaginary: sin }],
+      [
+        { real: cos, imaginary: -sin },
+        { real: 0, imaginary: 0 },
+      ],
+      [
+        { real: 0, imaginary: 0 },
+        { real: cos, imaginary: sin },
+      ],
     ]);
   }
 
@@ -137,12 +202,14 @@ export class QuantumSimulator {
 
     for (let i = 0; i < size; i++) {
       const controlBit = (i >> (this.numQubits - 1 - control)) & 1;
-      if (controlBit === 1) {
+      const targetBit = (i >> (this.numQubits - 1 - target)) & 1;
+      if (controlBit === 1 && targetBit === 0) {
         const targetMask = 1 << (this.numQubits - 1 - target);
-        const j = i ^ targetMask;
+        const j = i | targetMask; // j has target bit flipped (set to 1)
+        // Swap amplitudes
+        const temp = this.stateVector[i];
         newState[i] = this.stateVector[j];
-      } else {
-        newState[i] = this.stateVector[i];
+        newState[j] = temp;
       }
     }
     this.stateVector = newState;
@@ -163,9 +230,33 @@ export class QuantumSimulator {
   }
 
   private swap(qubit1: number, qubit2: number) {
-    this.cnot(qubit1, qubit2);
-    this.cnot(qubit2, qubit1);
-    this.cnot(qubit1, qubit2);
+    const newState = [...this.stateVector];
+    const size = Math.pow(2, this.numQubits);
+
+    for (let i = 0; i < size; i++) {
+      // Only process each pair once to avoid double-swapping
+      const bit1 = (i >> (this.numQubits - 1 - qubit1)) & 1;
+      const bit2 = (i >> (this.numQubits - 1 - qubit2)) & 1;
+
+      if (bit1 === 0 && bit2 === 0) {
+        // |00⟩ for these qubits - swap with |11⟩
+        const mask1 = 1 << (this.numQubits - 1 - qubit1);
+        const mask2 = 1 << (this.numQubits - 1 - qubit2);
+        const j = i | mask1 | mask2; // Set both bits to 1
+        const temp = this.stateVector[i];
+        newState[i] = this.stateVector[j];
+        newState[j] = temp;
+      } else if (bit1 === 0 && bit2 === 1) {
+        // |01⟩ for these qubits - swap with |10⟩
+        const mask1 = 1 << (this.numQubits - 1 - qubit1);
+        const mask2 = 1 << (this.numQubits - 1 - qubit2);
+        const j = (i | mask1) ^ mask2; // Set bit1 to 1, set bit2 to 0
+        const temp = this.stateVector[i];
+        newState[i] = this.stateVector[j];
+        newState[j] = temp;
+      }
+    }
+    this.stateVector = newState;
   }
 
   private toffoli(control1: number, control2: number, target: number) {
@@ -227,7 +318,9 @@ export class QuantumSimulator {
   public simulate(circuit: CircuitState): StateVector {
     this.stateVector = this.initializeStateVector();
 
-    const sortedGates = [...circuit.gates].sort((a, b) => a.position - b.position);
+    const sortedGates = [...circuit.gates].sort(
+      (a, b) => a.position - b.position
+    );
     for (const gate of sortedGates) {
       this.applyGate(gate.type, gate.qubitIndices, gate.params);
     }
@@ -242,7 +335,10 @@ export class QuantumSimulator {
     };
   }
 
-  public measure(circuit: CircuitState, shots: number = 1024): MeasurementResult[] {
+  public measure(
+    circuit: CircuitState,
+    shots: number = 1024
+  ): MeasurementResult[] {
     const stateVector = this.simulate(circuit);
     const results: { [state: string]: number } = {};
 
@@ -259,7 +355,7 @@ export class QuantumSimulator {
         }
       }
 
-      const stateStr = measuredState.toString(2).padStart(this.numQubits, '0');
+      const stateStr = measuredState.toString(2).padStart(this.numQubits, "0");
       results[stateStr] = (results[stateStr] || 0) + 1;
     }
 
@@ -286,9 +382,9 @@ export class QuantumSimulator {
 
         for (let bit = 0; bit < state.length; bit++) {
           if (Math.random() < noiseLevel) {
-            const bitArray = state.split('');
-            bitArray[bit] = bitArray[bit] === '0' ? '1' : '0';
-            state = bitArray.join('');
+            const bitArray = state.split("");
+            bitArray[bit] = bitArray[bit] === "0" ? "1" : "0";
+            state = bitArray.join("");
           }
         }
 

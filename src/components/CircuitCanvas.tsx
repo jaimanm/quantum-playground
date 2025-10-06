@@ -6,19 +6,12 @@ import { useState, useCallback, useMemo } from "react";
 interface CircuitCanvasProps {
   circuit: CircuitState;
   selectedGate: GateType | null;
-  draggedGate?: GateType | null;
   pendingMultiQubitGate?: {
     type: GateType;
     qubits: number[];
     position: number;
   } | null;
   onGatePlaced: (qubit: number, position: number) => void;
-  onGateDropped?: (
-    gateType: GateType,
-    qubit: number,
-    position: number,
-    params?: { [key: string]: number }
-  ) => void;
   onGateRemove: (gateId: string) => void;
   onQubitChange: (delta: number) => void;
 }
@@ -26,10 +19,8 @@ interface CircuitCanvasProps {
 export function CircuitCanvas({
   circuit,
   selectedGate,
-  draggedGate,
   pendingMultiQubitGate,
   onGatePlaced,
-  onGateDropped,
   onGateRemove,
   onQubitChange,
 }: CircuitCanvasProps) {
@@ -37,11 +28,7 @@ export function CircuitCanvas({
     qubit: number;
     position: number;
   } | null>(null);
-  const [dragOverCell, setDragOverCell] = useState<{
-    qubit: number;
-    position: number;
-  } | null>(null);
-  const [dragPreview, setDragPreview] = useState<{
+  const [hoverPreview, setHoverPreview] = useState<{
     qubit: number;
     position: number;
     gateType: GateType;
@@ -115,82 +102,36 @@ export function CircuitCanvas({
     }
   };
 
-  // Find the optimal position by shifting left from hover position until hitting a gate
-  const findOptimalPosition = useCallback(
-    (qubitIndices: number[], droppedPosition: number) => {
-      // Start from dropped position and shift left until we hit an existing gate or reach position 0
-      for (let pos = droppedPosition; pos >= 0; pos--) {
+  const handleCellHover = (qubit: number, position: number) => {
+    setHoveredCell({ qubit, position });
+    if (selectedGate) {
+      // Find optimal position for preview
+      let optimalPosition = position;
+      for (let pos = position; pos >= 0; pos--) {
         const hasConflict = circuit.gates.some(
-          (gate) =>
-            gate.position === pos &&
-            gate.qubitIndices.some((q) => qubitIndices.includes(q))
+          (gate) => gate.position === pos && gate.qubitIndices.includes(qubit)
         );
-
         if (hasConflict) {
-          // Found a gate, so place at the position right after it
-          return pos + 1;
-        }
-      }
-
-      // No gates found to the left, place at position 0
-      return 0;
-    },
-    [circuit.gates]
-  );
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent, qubit: number, position: number) => {
-      e.preventDefault();
-      const droppedGateType =
-        (e.dataTransfer.getData("gate-type") as GateType) || draggedGate;
-
-      if (droppedGateType && onGateDropped) {
-        const gateDef = getGateDefinition(droppedGateType);
-        if (!gateDef) return;
-
-        const optimalPosition = findOptimalPosition([qubit], position);
-
-        if (gateDef.numQubits === 1) {
-          const params = gateDef.hasParams ? { angle: Math.PI / 4 } : undefined;
-          onGateDropped(droppedGateType, qubit, optimalPosition, params);
+          optimalPosition = pos + 1;
+          break;
         } else {
-          // For multi-qubit gates, pass to InteractiveBuilder to handle the workflow
-          onGateDropped(droppedGateType, qubit, optimalPosition);
+          optimalPosition = pos;
         }
       }
+      setHoverPreview({
+        qubit,
+        position: optimalPosition,
+        gateType: selectedGate,
+      });
+    } else {
+      setHoverPreview(null);
+    }
+  };
 
-      setDragOverCell(null);
-      setDragPreview(null);
-    },
-    [onGateDropped, findOptimalPosition, draggedGate]
-  );
-
-  const handleDragOver = useCallback(
-    (e: React.DragEvent, qubit: number, position: number) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "copy";
-      setDragOverCell({ qubit, position });
-
-      // Use the draggedGate prop instead of trying to get from dataTransfer during dragover
-      if (draggedGate) {
-        const optimalPosition = findOptimalPosition([qubit], position);
-
-        // Show preview for all gate types (single and multi-qubit)
-        // For multi-qubit gates, this shows where the first qubit will be placed
-        setDragPreview({
-          qubit,
-          position: optimalPosition,
-          gateType: draggedGate,
-        });
-      }
-    },
-    [draggedGate, findOptimalPosition]
-  );
-
-  const handleDragLeave = useCallback(() => {
-    setDragOverCell(null);
-    setDragPreview(null);
-  }, []);
+  const handleCellLeave = () => {
+    setHoveredCell(null);
+    setHoverPreview(null);
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
@@ -200,9 +141,9 @@ export function CircuitCanvas({
             Circuit Canvas
           </h3>
           <p className="text-sm text-gray-600">
-            {dragOverCell
-              ? "Drop here to place gate"
-              : "Drag gates from library or click to place"}
+            {selectedGate
+              ? "Click on a qubit row to place the selected gate"
+              : "Select a gate from the library and click on the canvas to place it"}
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -291,14 +232,37 @@ export function CircuitCanvas({
                     const isHovered =
                       hoveredCell?.qubit === qubitIndex &&
                       hoveredCell?.position === position;
-                    const isDragPreview =
-                      dragPreview?.qubit === qubitIndex &&
-                      dragPreview?.position === position;
-                    const previewGateDefinition = isDragPreview
-                      ? getGateDefinition(dragPreview.gateType)
+                    const isHoverPreview =
+                      hoverPreview?.qubit === qubitIndex &&
+                      hoverPreview?.position === position;
+                    const hoverPreviewGateDefinition = isHoverPreview
+                      ? getGateDefinition(hoverPreview.gateType)
                       : null;
                     const isPendingQubit =
                       pendingMultiQubitGate?.qubits.includes(qubitIndex);
+                    const showPendingConnector =
+                      pendingMultiQubitGate &&
+                      pendingMultiQubitGate.position === position &&
+                      (() => {
+                        const gateDef = getGateDefinition(
+                          pendingMultiQubitGate.type
+                        );
+                        return (
+                          gateDef &&
+                          ((gateDef.controlCount ?? 0) > 0 ||
+                            pendingMultiQubitGate.type === "SWAP")
+                        );
+                      })() &&
+                      pendingMultiQubitGate.qubits.includes(qubitIndex);
+                    const pendingConnectorColor = pendingMultiQubitGate
+                      ? getGateDefinition(pendingMultiQubitGate.type)?.color ??
+                        "bg-gray-400"
+                      : "bg-gray-400";
+                    const isControlPreview =
+                      pendingMultiQubitGate &&
+                      isHovered &&
+                      !pendingMultiQubitGate.qubits.includes(qubitIndex) &&
+                      hoveredCell?.qubit === qubitIndex;
                     const isControlCell = gateRole === "control";
                     const isTargetCell = gateRole === "target";
                     const isSwapCell = gateRole === "swap";
@@ -308,26 +272,12 @@ export function CircuitCanvas({
                       <div
                         key={position}
                         onMouseEnter={() =>
-                          setHoveredCell({ qubit: qubitIndex, position })
+                          handleCellHover(qubitIndex, position)
                         }
-                        onMouseLeave={() => setHoveredCell(null)}
+                        onMouseLeave={handleCellLeave}
                         onClick={() => handleCellClick(qubitIndex, position)}
-                        onDragOver={(e) =>
-                          handleDragOver(e, qubitIndex, position)
-                        }
-                        onDragLeave={handleDragLeave}
-                        onDrop={(e) => handleDrop(e, qubitIndex, position)}
                         className={`flex-1 min-w-[60px] h-16 border-r border-gray-200 cursor-pointer transition-all ${
                           isHovered && selectedGate ? "bg-cyan-50" : ""
-                        } ${
-                          dragOverCell?.qubit === qubitIndex &&
-                          dragOverCell?.position === position
-                            ? "bg-yellow-100 border-yellow-300"
-                            : ""
-                        } ${
-                          isDragPreview
-                            ? "bg-green-100 border-green-400 border-2"
-                            : ""
                         } ${
                           isPendingQubit
                             ? "bg-purple-100 border-purple-300"
@@ -348,6 +298,12 @@ export function CircuitCanvas({
                           {showConnector && (
                             <div
                               className={`absolute inset-y-2 left-1/2 w-[3px] -translate-x-1/2 rounded-full pointer-events-none ${connectorColorClass}`}
+                            ></div>
+                          )}
+
+                          {showPendingConnector && (
+                            <div
+                              className={`absolute inset-y-2 left-1/2 w-[3px] -translate-x-1/2 rounded-full pointer-events-none ${pendingConnectorColor} opacity-70`}
                             ></div>
                           )}
 
@@ -405,19 +361,109 @@ export function CircuitCanvas({
                         </div>
 
                         {!gateInCell &&
-                          isDragPreview &&
-                          previewGateDefinition && (
+                          isHoverPreview &&
+                          hoverPreviewGateDefinition && (
                             <div className="relative h-full flex items-center justify-center">
                               <div
-                                className={`${previewGateDefinition.color} text-white font-bold rounded-lg shadow-lg px-3 py-2 text-sm opacity-70 animate-pulse border-2 border-green-400`}
+                                className={`${hoverPreviewGateDefinition.color} text-white font-bold rounded-lg shadow-lg px-3 py-2 text-sm opacity-70 animate-pulse border-2 border-cyan-400`}
                               >
-                                {previewGateDefinition.icon}
+                                {hoverPreviewGateDefinition.icon}
                               </div>
-                              <div className="absolute -top-1 -right-1 text-green-600 text-xs font-bold">
+                              <div className="absolute -top-1 -right-1 text-cyan-600 text-xs font-bold">
                                 ✓
                               </div>
                             </div>
                           )}
+
+                        {!gateInCell &&
+                          pendingMultiQubitGate &&
+                          pendingMultiQubitGate.position === position &&
+                          pendingMultiQubitGate.qubits.includes(qubitIndex) &&
+                          (() => {
+                            const gateDef = getGateDefinition(
+                              pendingMultiQubitGate.type
+                            );
+                            if (!gateDef) return null;
+                            const index =
+                              pendingMultiQubitGate.qubits.indexOf(qubitIndex);
+                            const controlCount = gateDef.controlCount ?? 0;
+                            let role: string;
+                            if (pendingMultiQubitGate.type === "SWAP") {
+                              role = "swap";
+                            } else if (controlCount > 0) {
+                              if (index < controlCount) {
+                                role = "control";
+                              } else {
+                                role = "target";
+                              }
+                            } else if (
+                              pendingMultiQubitGate.qubits.length > 1
+                            ) {
+                              role = "body";
+                            } else {
+                              role = "single";
+                            }
+                            return (
+                              <div className="relative h-full flex items-center justify-center">
+                                {role === "control" && (
+                                  <div className="w-4 h-4 rounded-full border-2 border-cyan-500 bg-white shadow-md opacity-70"></div>
+                                )}
+                                {role === "target" && (
+                                  <div
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-md ${gateDef.color} opacity-70`}
+                                  >
+                                    {gateDef.icon}
+                                  </div>
+                                )}
+                                {role === "swap" && (
+                                  <div className="w-10 h-10 flex items-center justify-center rounded-full border-2 border-teal-500 bg-white text-teal-600 text-xl font-semibold shadow-md opacity-70">
+                                    ×
+                                  </div>
+                                )}
+                                {(role === "body" || role === "single") && (
+                                  <div
+                                    className={`${gateDef.color} text-white font-bold rounded-lg shadow-lg px-3 py-2 text-sm opacity-70 border-2 border-cyan-400`}
+                                  >
+                                    {gateDef.icon}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                        {!gateInCell && isControlPreview && (
+                          <div className="relative h-full flex items-center justify-center">
+                            <div className="w-4 h-4 rounded-full border-2 border-cyan-500 bg-white shadow-md"></div>
+                            <div className="absolute -top-1 -right-1 text-cyan-600 text-xs font-bold">
+                              •
+                            </div>
+                            {/* Vertical line connecting to target gate */}
+                            {(() => {
+                              const targetQubit =
+                                pendingMultiQubitGate!.qubits[0];
+                              const targetPosition =
+                                pendingMultiQubitGate!.position;
+                              const currentPosition = position;
+                              if (currentPosition === targetPosition) {
+                                const distance = Math.abs(
+                                  qubitIndex - targetQubit
+                                );
+                                const isAbove = qubitIndex < targetQubit;
+                                return (
+                                  <div
+                                    className="absolute left-1/2 w-[3px] bg-cyan-500 -translate-x-1/2 pointer-events-none"
+                                    style={{
+                                      top: isAbove ? "100%" : "auto",
+                                      bottom: isAbove ? "auto" : "100%",
+                                      height: `${distance * 64 + 16}px`, // 64px per qubit row + 16px spacing
+                                    }}
+                                  ></div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

@@ -1,5 +1,10 @@
-import { CircuitState, ExecutionResult, QuantumComputerType } from '../types/circuit';
-import { QuantumSimulator } from './quantumSimulator';
+import {
+  CircuitState,
+  ExecutionResult,
+  QuantumComputerType,
+} from "../types/circuit";
+
+const API_BASE_URL = "http://localhost:8000";
 
 export async function executeCircuit(
   circuit: CircuitState,
@@ -7,62 +12,105 @@ export async function executeCircuit(
   onProgress?: (progress: number) => void
 ): Promise<ExecutionResult> {
   const shots = 1024;
-  const simulator = new QuantumSimulator(circuit.numQubits);
 
-  const totalDuration = computerType === 'simulator' ? 2000 : computerType === 'ion-trap' ? 4000 : 3000;
+  // Simulate progress for UI feedback
+  const totalDuration =
+    computerType === "simulator"
+      ? 2000
+      : computerType === "ion-trap"
+      ? 4000
+      : 3000;
 
-  for (let i = 0; i <= 100; i += 5) {
-    await new Promise((resolve) => setTimeout(resolve, totalDuration / 20));
+  for (let i = 0; i <= 90; i += 10) {
+    // Leave room for actual API call
+    await new Promise((resolve) => setTimeout(resolve, totalDuration / 10));
     onProgress?.(i);
   }
 
-  const stateVector = simulator.simulate(circuit);
-  const probabilities: { [state: string]: number } = {};
+  try {
+    // Call FastAPI backend
+    const response = await fetch(`${API_BASE_URL}/simulate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        circuit,
+        shots,
+        backend: "qiskit", // Default to Qiskit, could make this configurable
+      }),
+    });
 
-  stateVector.probabilities.forEach((prob, index) => {
-    if (prob > 0.001) {
-      const state = index.toString(2).padStart(circuit.numQubits, '0');
-      probabilities[state] = prob;
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
     }
-  });
 
-  const noiseLevel = computerType === 'simulator' ? 0 : computerType === 'ion-trap' ? 0.02 : 0.05;
-  const measurements =
-    noiseLevel === 0
-      ? simulator.measure(circuit, shots)
-      : simulator.measureWithNoise(circuit, shots, noiseLevel);
+    const simulationResult = await response.json();
 
-  const circuitDepth = calculateCircuitDepth(circuit);
+    onProgress?.(100);
 
-  const summary = generateSummary(circuit, computerType, measurements, probabilities);
+    // Transform backend response to match ExecutionResult interface
+    const measurements = simulationResult.measurements.map((m: any) => ({
+      state: m.state,
+      count: m.count,
+      probability: m.probability,
+    }));
 
-  return {
-    executionId: `exec-${Date.now()}`,
-    circuit,
-    quantumComputer: computerType,
-    expectedResults: {
-      stateVector,
-      probabilities,
-    },
-    actualResults: {
+    const probabilities: { [state: string]: number } = {};
+    Object.entries(simulationResult.probabilities).forEach(([state, prob]) => {
+      probabilities[state] = prob as number;
+    });
+
+    // Create state vector from backend response
+    let stateVector;
+    if (simulationResult.stateVector) {
+      stateVector = {
+        amplitudes: simulationResult.stateVector.amplitudes.map((amp: any) => ({
+          real: amp.real,
+          imaginary: amp.imaginary,
+        })),
+        probabilities: simulationResult.stateVector.probabilities,
+      };
+    } else {
+      // Fallback for backends that don't provide state vector
+      stateVector = {
+        amplitudes: [],
+        probabilities: [],
+      };
+    }
+
+    const summary = generateSummary(
+      circuit,
+      computerType,
       measurements,
-      shots,
-    },
-    metadata: {
-      executionTime: Math.floor(Math.random() * 500) + 100,
-      circuitDepth,
-      gateCount: circuit.gates.length,
-      timestamp: new Date().toISOString(),
-    },
-    summary,
-  };
-}
+      probabilities
+    );
 
-function calculateCircuitDepth(circuit: CircuitState): number {
-  if (circuit.gates.length === 0) return 0;
-
-  const positions = circuit.gates.map((gate) => gate.position);
-  return Math.max(...positions) + 1;
+    return {
+      executionId: `exec-${Date.now()}`,
+      circuit,
+      quantumComputer: computerType,
+      expectedResults: {
+        stateVector,
+        probabilities,
+      },
+      actualResults: {
+        measurements,
+        shots,
+      },
+      metadata: {
+        executionTime: simulationResult.executionTime * 1000, // Convert to ms
+        circuitDepth: simulationResult.circuitDepth,
+        gateCount: simulationResult.gateCount,
+        timestamp: new Date().toISOString(),
+      },
+      summary,
+    };
+  } catch (error) {
+    console.error("Backend simulation failed:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Circuit execution failed: ${errorMessage}`);
+  }
 }
 
 function generateSummary(
@@ -71,36 +119,37 @@ function generateSummary(
   measurements: { state: string; count: number; probability: number }[],
   expectedProbs: { [state: string]: number }
 ): string {
-  const hasH = circuit.gates.some((g) => g.type === 'H');
-  const hasCNOT = circuit.gates.some((g) => g.type === 'CNOT');
+  const hasH = circuit.gates.some((g) => g.type === "H");
+  const hasCNOT = circuit.gates.some((g) => g.type === "CNOT");
   const topState = measurements[0];
 
-  let summary = 'Your quantum circuit ';
+  let summary = "Your quantum circuit ";
 
   if (hasH && hasCNOT) {
     summary +=
-      'created an entangled state using superposition and entanglement! This means your qubits are now mysteriously connected. ';
+      "created an entangled state using superposition and entanglement! This means your qubits are now mysteriously connected. ";
   } else if (hasH) {
     summary +=
-      'created superposition, putting your qubits into a state of being both 0 and 1 at the same time! ';
+      "created superposition, putting your qubits into a state of being both 0 and 1 at the same time! ";
   } else if (hasCNOT) {
-    summary += 'used entanglement to connect your qubits together. ';
+    summary += "used entanglement to connect your qubits together. ";
   } else {
-    summary += 'performed quantum operations on your qubits. ';
+    summary += "performed quantum operations on your qubits. ";
   }
 
-  summary += `The most common measurement was |${topState.state}⟩, occurring in ${(
-    topState.probability * 100
-  ).toFixed(1)}% of shots. `;
+  summary += `The most common measurement was |${
+    topState.state
+  }⟩, occurring in ${(topState.probability * 100).toFixed(1)}% of shots. `;
 
-  if (computerType !== 'simulator') {
-    const fidelityEstimate = measurements[0].probability / (expectedProbs[topState.state] || 1);
+  if (computerType !== "simulator") {
+    const fidelityEstimate =
+      measurements[0].probability / (expectedProbs[topState.state] || 1);
     if (fidelityEstimate < 0.8) {
       summary +=
-        'You can see quantum noise affecting the results - the actual measurements differ from theory due to environmental interference and imperfect gates. ';
+        "You can see quantum noise affecting the results - the actual measurements differ from theory due to environmental interference and imperfect gates. ";
     } else {
       summary +=
-        'The results closely match theoretical predictions, showing high-quality quantum operations! ';
+        "The results closely match theoretical predictions, showing high-quality quantum operations! ";
     }
   }
 
