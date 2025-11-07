@@ -1,3 +1,4 @@
+# Logs
 logs
 *.log
 npm-debug.log*
@@ -11,6 +12,7 @@ dist
 dist-ssr
 *.local
 
+# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -20,19 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.env
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-backend/__pycache__/
-backend/*.pyc
-
-# Coverage
-.coverage
-coverage/
-htmlcov/
-backend/.coverage
-backend/htmlcov/
-*.lcov
