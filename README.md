@@ -1,74 +1,16 @@
-# Quantum Playground
+# React + Vite
 
-A visual quantum circuit builder and simulator built with React, TypeScript, and FastAPI.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Features
+Currently, two official plugins are available:
 
-- **Drag-and-drop circuit building** with intuitive visual feedback
-- **Real-time simulation** using Qiskit or PennyLane backends
-- **Multiple quantum computer types** (simulator, ion-trap, superconducting)
-- **Code generation** for Qiskit, PennyLane, Cirq, Q#, and Braket
-- **Educational insights** with circuit analysis and explanations
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Setup
+## React Compiler
 
-### Frontend
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-1. Install dependencies:
+## Expanding the ESLint configuration
 
-```bash
-npm install
-```
-
-2. Start development server:
-
-```bash
-npm run dev
-```
-
-### Backend
-
-1. Navigate to backend directory:
-
-```bash
-cd backend
-```
-
-2. Install Python dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-3. Start FastAPI server:
-
-```bash
-uvicorn main:app --reload
-```
-
-The backend will run on `http://localhost:8000` and the frontend on `http://localhost:5173`.
-
-## Usage
-
-1. **Build circuits** by dragging gates from the library onto the canvas
-2. **Configure qubits** using the +/- buttons
-3. **Execute simulations** using the execution panel
-4. **Generate code** in your preferred quantum framework
-5. **View results** with interactive visualizations
-
-## Architecture
-
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Backend**: FastAPI + Qiskit/PennyLane
-- **Simulation**: Accurate quantum computation with proper gate implementations
-- **State Management**: Custom React hooks for circuit state
-
-## Development
-
-- `npm run lint` - Run ESLint
-- `npm run typecheck` - TypeScript type checking
-- `npm run build` - Build for production
-
-## API Documentation
-
-Backend API docs available at `http://localhost:8000/docs` when running.
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

@@ -1,30 +1,46 @@
-# Quantum Playground Backend
+# Quantum Circuit Simulator Backend
 
-FastAPI server for quantum circuit simulation using Qiskit and PennyLane.
+FastAPI backend for quantum circuit simulation with single-qubit gates (H, X, Y, Z).
 
-## Setup
-
-1. Install Python dependencies:
+## Installation
 
 ```bash
+cd backend
 pip install -r requirements.txt
 ```
 
-2. Run the server:
+## Run Development Server
 
 ```bash
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://localhost:8000`
+The API will be available at:
+
+- API: http://localhost:8000
+- Interactive docs: http://localhost:8000/docs
+- Alternative docs: http://localhost:8000/redoc
+
+## Project Structure
+
+```
+backend/
+├── app/
+│   ├── __init__.py      # Package marker
+│   ├── main.py          # FastAPI app and endpoints
+│   ├── models.py        # Pydantic request/response schemas
+│   └── simulator.py     # Quantum simulation engine
+├── requirements.txt     # Python dependencies
+└── README.md           # This file
+```
 
 ## API Endpoints
 
 ### POST /simulate
 
-Simulate a quantum circuit.
+Simulate a quantum circuit and return probabilities.
 
-**Request Body:**
+**Request body:**
 
 ```json
 {
@@ -34,14 +50,18 @@ Simulate a quantum circuit.
       {
         "id": "gate-1",
         "type": "H",
-        "qubitIndices": [0],
-        "position": 0
+        "targets": [0],
+        "column": 0
+      },
+      {
+        "id": "gate-2",
+        "type": "X",
+        "targets": [1],
+        "column": 1
       }
-    ],
-    "measurements": []
+    ]
   },
-  "shots": 1024,
-  "backend": "qiskit"
+  "shots": 1000
 }
 ```
 
@@ -49,28 +69,43 @@ Simulate a quantum circuit.
 
 ```json
 {
-  "stateVector": {
-    "amplitudes": [{ "real": 0.707, "imaginary": 0.0 }],
-    "probabilities": [0.5, 0.5]
+  "numQubits": 2,
+  "probabilities": {
+    "00": 0.5,
+    "01": 0.0,
+    "10": 0.5,
+    "11": 0.0
   },
-  "probabilities": { "00": 0.5, "11": 0.5 },
-  "measurements": [{ "state": "00", "count": 512, "probability": 0.5 }],
-  "executionTime": 0.023,
-  "circuitDepth": 1,
-  "gateCount": 1
+  "samples": [
+    { "bitstring": "00", "count": 512 },
+    { "bitstring": "10", "count": 488 }
+  ],
+  "metadata": {
+    "durationMs": 1.234
+  }
 }
 ```
 
-### GET /health
+## Testing
 
-Health check endpoint.
+Test the API using the interactive docs at http://localhost:8000/docs or with curl:
 
-## Supported Gates
+```bash
+curl -X POST http://localhost:8000/simulate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "circuit": {
+      "numQubits": 1,
+      "gates": [
+        {"id": "1", "type": "H", "targets": [0], "column": 0}
+      ]
+    }
+  }'
+```
 
-- Single qubit: H, X, Y, Z, S, T, RX, RY, RZ
-- Multi-qubit: CNOT, CZ, SWAP, Toffoli
+## Future Extensions
 
-## Backends
-
-- `qiskit`: Uses Qiskit with Aer simulator
-- `pennylane`: Uses PennyLane with default.qubit device
+- Two-qubit gates (CNOT, CZ, SWAP)
+- Async job submission for hardware providers
+- Provider abstraction (IonQ, IBM, Azure Quantum)
+- API key management and authentication
