@@ -1,3 +1,4 @@
+import * as Tooltip from "@radix-ui/react-tooltip";
 import Gate from "./Gate";
 import type { GateType } from "../types";
 
@@ -19,11 +20,13 @@ const GateLibrary: React.FC<GateLibraryProps> = ({ gateLibraryRef }) => {
       <h2 className="text-xl font-bold text-gray-300 mb-4 text-center">
         Gate Library
       </h2>
-      <div className="flex justify-center items-center gap-4">
-        {gates.map((gateName) => (
-          <Gate key={gateName} name={gateName} />
-        ))}
-      </div>
+      <Tooltip.Provider delayDuration={300}>
+        <div className="flex justify-center items-center gap-4">
+          {gates.map((gateName) => (
+            <Gate key={gateName} name={gateName} />
+          ))}
+        </div>
+      </Tooltip.Provider>
     </div>
   );
 };

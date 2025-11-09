@@ -26,6 +26,11 @@ export interface GateAnimation {
   progress: number; // 0 to 1
 }
 
+export interface GateDeletionAnimation {
+  id: string;
+  progress: number; // 0 to 1
+}
+
 export interface DraggedGateInfo extends PlacedGate {
   x: number;
   y: number;

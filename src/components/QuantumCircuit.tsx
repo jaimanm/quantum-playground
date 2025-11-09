@@ -1,5 +1,10 @@
 import { useRef, useEffect } from "react";
-import type { PlacedGate, DraggedGateInfo, GateAnimation } from "../types";
+import type {
+  PlacedGate,
+  DraggedGateInfo,
+  GateAnimation,
+  GateDeletionAnimation,
+} from "../types";
 import {
   PADDING,
   QUBIT_SPACING,
@@ -13,9 +18,11 @@ interface QuantumCircuitProps {
   numQubits: number;
   placedGates: PlacedGate[];
   onGateMouseDown: (e: React.MouseEvent, gate: PlacedGate) => void;
+  onGateContextMenu: (e: React.MouseEvent, gate: PlacedGate) => void;
   draggedGate: DraggedGateInfo | null;
   placeholder: { qubit: number; col: number } | null;
   gateAnimations: GateAnimation[];
+  deletionAnimations: GateDeletionAnimation[];
 }
 
 /**
@@ -26,9 +33,11 @@ const QuantumCircuit: React.FC<QuantumCircuitProps> = ({
   numQubits,
   placedGates,
   onGateMouseDown,
+  onGateContextMenu,
   draggedGate,
   placeholder,
   gateAnimations,
+  deletionAnimations,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -116,7 +125,12 @@ const QuantumCircuit: React.FC<QuantumCircuitProps> = ({
         )
           return;
 
-        // Check if this gate is animating
+        // Check if this gate is being deleted
+        const deletionAnim = deletionAnimations.find(
+          (anim) => anim.id === gate.id
+        );
+
+        // Check if this gate is animating (sliding)
         const animation = gateAnimations.find((anim) => anim.id === gate.id);
         let effectiveCol = gate.col;
 
@@ -138,6 +152,27 @@ const QuantumCircuit: React.FC<QuantumCircuitProps> = ({
         const drawnGateSize = GATE_SIZE - GATE_MARGIN * 2;
 
         const colors = GATE_COLORS[gate.type] || GATE_COLORS.DEFAULT;
+
+        // Apply deletion animation transformations
+        if (deletionAnim) {
+          ctx.save();
+
+          // Calculate scale (grows from 1 to 1.5)
+          const scale = 1 + deletionAnim.progress * 0.5;
+
+          // Calculate opacity (fades from 1 to 0)
+          const opacity = 1 - deletionAnim.progress;
+
+          // Set global alpha for fade effect
+          ctx.globalAlpha = opacity;
+
+          // Translate to center of gate, scale, then translate back
+          const centerX = gateCellX + GATE_SIZE / 2;
+          const centerY = gateCellY + GATE_SIZE / 2;
+          ctx.translate(centerX, centerY);
+          ctx.scale(scale, scale);
+          ctx.translate(-centerX, -centerY);
+        }
 
         // Draw the rounded rectangle
         roundedRectPath(
@@ -164,6 +199,11 @@ const QuantumCircuit: React.FC<QuantumCircuitProps> = ({
           gateCellX + GATE_SIZE / 2,
           gateCellY + GATE_SIZE / 2
         );
+
+        // Restore context if we applied deletion animation
+        if (deletionAnim) {
+          ctx.restore();
+        }
       });
 
       // Draw Placeholder
@@ -199,12 +239,22 @@ const QuantumCircuit: React.FC<QuantumCircuitProps> = ({
     // Redraw on window resize
     window.addEventListener("resize", drawCircuit);
     return () => window.removeEventListener("resize", drawCircuit);
-  }, [placedGates, draggedGate, numQubits, placeholder, gateAnimations]); // Redraw when state changes
+  }, [
+    placedGates,
+    draggedGate,
+    numQubits,
+    placeholder,
+    gateAnimations,
+    deletionAnimations,
+  ]); // Redraw when state changes
 
   /**
    * Handles mouse down on the canvas to check if a gate was clicked.
    */
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Ignore right-clicks (they're handled by onContextMenu)
+    if (e.button !== 0) return;
+
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -259,11 +309,39 @@ const QuantumCircuit: React.FC<QuantumCircuitProps> = ({
     canvasRef.current.style.cursor = isOverGate ? "grab" : "default";
   };
 
+  /**
+   * Handles right-click (context menu) on the canvas to delete a gate.
+   */
+  const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Check if the right-click is on any placed gate
+    for (const gate of placedGates) {
+      const gateCellY = PADDING + gate.qubit * QUBIT_SPACING - GATE_SIZE / 2;
+      const hitboxX = CIRCUIT_START_X + gate.col * GATE_SIZE + GATE_MARGIN;
+      const hitboxY = gateCellY + GATE_MARGIN;
+      const hitboxSize = GATE_SIZE - GATE_MARGIN * 2;
+      if (
+        x >= hitboxX &&
+        x <= hitboxX + hitboxSize &&
+        y >= hitboxY &&
+        y <= hitboxY + hitboxSize
+      ) {
+        onGateContextMenu(e, gate);
+        break;
+      }
+    }
+  };
+
   return (
     <canvas
       ref={canvasRef}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
+      onContextMenu={handleContextMenu}
     ></canvas>
   );
 };
