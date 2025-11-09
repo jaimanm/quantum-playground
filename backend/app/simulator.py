@@ -2,9 +2,10 @@
 Quantum circuit simulator using Qiskit
 Provides statevector simulation and measurement sampling
 """
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from qiskit import QuantumCircuit
 from qiskit_aer import AerSimulator
+from qiskit.quantum_info import Statevector
 
 
 # Gate mapping from our API to Qiskit methods
@@ -16,15 +17,15 @@ GATE_MAP = {
 }
 
 
-def simulate(circuit_data: Dict) -> List[complex]:
+def _build_circuit(circuit_data: Dict) -> Tuple[QuantumCircuit, int]:
     """
-    Simulate a quantum circuit and return the final statevector.
+    Build a Qiskit QuantumCircuit from circuit data.
     
     Args:
-        circuit_data: Dict with 'numQubits' and 'gates' (list of gate dicts)
+        circuit_data: Dict with 'numQubits' and 'gates'
     
     Returns:
-        Statevector as list of complex amplitudes (length 2^n)
+        Tuple of (circuit, num_qubits)
     """
     n = circuit_data["numQubits"]
     qc = QuantumCircuit(n)
@@ -49,13 +50,23 @@ def simulate(circuit_data: Dict) -> List[complex]:
     # Reverse qubit ordering to match big-endian convention (q0 leftmost)
     qc = qc.reverse_bits()
     
-    # Save statevector
-    qc.save_statevector()
+    return qc, n
+
+
+def simulate(circuit_data: Dict) -> List[complex]:
+    """
+    Simulate a quantum circuit and return the final statevector.
     
-    # Run simulation
-    simulator = AerSimulator(method='statevector')
-    result = simulator.run(qc).result()
-    statevector = result.get_statevector(qc)
+    Args:
+        circuit_data: Dict with 'numQubits' and 'gates' (list of gate dicts)
+    
+    Returns:
+        Statevector as list of complex amplitudes (length 2^n)
+    """
+    qc, n = _build_circuit(circuit_data)
+    
+    # Use Qiskit's Statevector to simulate
+    statevector = Statevector.from_instruction(qc)
     
     # Convert to list of complex numbers
     return [complex(amp) for amp in statevector.data]
@@ -63,65 +74,45 @@ def simulate(circuit_data: Dict) -> List[complex]:
 
 def get_probabilities(state: List[complex], n: int) -> Dict[str, float]:
     """
-    Compute measurement probabilities from statevector.
+    Compute measurement probabilities from statevector using Qiskit.
     
     Args:
-        state: Statevector
+        state: Statevector as list of complex amplitudes
         n: Number of qubits
     
     Returns:
         Dict mapping bitstrings to probabilities (only non-zero entries)
         Bitstrings are in big-endian format (q0 is leftmost)
     """
-    probs = {}
-    for i, amp in enumerate(state):
-        p = abs(amp) ** 2
-        if p > 1e-12:  # Filter near-zero probabilities
-            # Circuit was reversed, so now direct format gives big-endian
-            bitstring = format(i, f"0{n}b")
-            probs[bitstring] = p
-    return probs
+    # Create Qiskit Statevector object
+    statevector = Statevector(state)
+    
+    # Get probabilities dict using Qiskit's built-in method
+    # probabilities_dict returns format like {'00': 0.5, '11': 0.5}
+    probs_dict = statevector.probabilities_dict()
+    
+    # Filter out near-zero probabilities
+    return {bs: p for bs, p in probs_dict.items() if p > 1e-12}
 
 
 def sample_shots(state: List[complex], n: int, shots: int) -> List[Dict]:
     """
-    Sample measurement outcomes from the statevector.
-    Uses Qiskit's measurement sampling for efficiency.
+    Sample measurement outcomes from the statevector using Qiskit.
     
     Args:
-        state: Statevector (not used directly - we'll resimulate with measurements)
+        state: Statevector as list of complex amplitudes
         n: Number of qubits
         shots: Number of samples to take
     
     Returns:
         List of dicts with 'bitstring' and 'count'
     """
-    # Note: For sampling, we need to reconstruct and measure the circuit
-    # This is a limitation of the current API design
-    # Alternative: Pass the circuit data through and create a separate sampling path
+    # Create Qiskit Statevector object
+    statevector = Statevector(state)
     
-    # For now, sample from probabilities manually
-    import random
+    # Use Qiskit's built-in sampling method
+    # sample_counts returns a Counts object (dict-like) with measurement results
+    counts = statevector.sample_counts(shots=shots)
     
-    probs = [abs(amp) ** 2 for amp in state]
-    total = sum(probs)
-    
-    # Build cumulative distribution
-    cdf = []
-    acc = 0.0
-    for p in probs:
-        acc += p
-        cdf.append(acc)
-    
-    # Sample using inverse transform
-    counts: Dict[str, int] = {}
-    for _ in range(shots):
-        r = random.random() * total
-        for i, threshold in enumerate(cdf):
-            if r <= threshold:
-                # Circuit was reversed, so now direct format gives big-endian
-                bitstring = format(i, f"0{n}b")
-                counts[bitstring] = counts.get(bitstring, 0) + 1
-                break
-    
+    # Convert to list of dicts format
     return [{"bitstring": bs, "count": c} for bs, c in counts.items()]

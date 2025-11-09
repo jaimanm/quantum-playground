@@ -3,17 +3,13 @@ import type { GateType } from "../types";
 
 interface GateLibraryProps {
   gateLibraryRef: React.RefObject<HTMLDivElement | null>;
-  onDragStart: () => void;
 }
 
 /**
  * Gate Library Component
  * Displays available quantum gates that can be dragged onto the circuit
  */
-const GateLibrary: React.FC<GateLibraryProps> = ({
-  gateLibraryRef,
-  onDragStart,
-}) => {
+const GateLibrary: React.FC<GateLibraryProps> = ({ gateLibraryRef }) => {
   const gates: GateType[] = ["X", "Y", "Z", "H"];
   return (
     <div
@@ -25,7 +21,7 @@ const GateLibrary: React.FC<GateLibraryProps> = ({
       </h2>
       <div className="flex justify-center items-center gap-4">
         {gates.map((gateName) => (
-          <Gate key={gateName} name={gateName} onDragStart={onDragStart} />
+          <Gate key={gateName} name={gateName} />
         ))}
       </div>
     </div>

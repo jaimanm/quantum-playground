@@ -18,8 +18,14 @@ import type { PlacedGate, DraggedGateInfo, GateAnimation } from "./types";
  * Manages the quantum circuit builder state and interactions
  */
 export default function App() {
-  const [numQubits, setNumQubits] = useState<number>(2);
-  const [placedGates, setPlacedGates] = useState<PlacedGate[]>([]);
+  const [numQubits, setNumQubits] = useState<number>(() => {
+    const saved = localStorage.getItem("quantum-numQubits");
+    return saved ? parseInt(saved, 10) : 2;
+  });
+  const [placedGates, setPlacedGates] = useState<PlacedGate[]>(() => {
+    const saved = localStorage.getItem("quantum-placedGates");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [draggedGate, setDraggedGate] = useState<DraggedGateInfo | null>(null);
   const [placeholder, setPlaceholder] = useState<{
     qubit: number;
@@ -28,7 +34,22 @@ export default function App() {
   const [gateAnimations, setGateAnimations] = useState<GateAnimation[]>([]);
   const circuitContainerRef = useRef<HTMLDivElement>(null);
   const gateLibraryRef = useRef<HTMLDivElement>(null);
-  const [isDraggingFromLibrary, setIsDraggingFromLibrary] = useState(false);
+
+  // Save to localStorage whenever circuit changes
+  useEffect(() => {
+    localStorage.setItem("quantum-numQubits", numQubits.toString());
+  }, [numQubits]);
+
+  useEffect(() => {
+    localStorage.setItem("quantum-placedGates", JSON.stringify(placedGates));
+  }, [placedGates]);
+
+  const handleClearCircuit = () => {
+    if (placedGates.length === 0) return;
+    if (confirm("Clear all gates from the circuit?")) {
+      setPlacedGates([]);
+    }
+  };
 
   const handleIncreaseQubits = () => {
     if (numQubits < 8) setNumQubits(numQubits + 1);
@@ -102,15 +123,10 @@ export default function App() {
 
     // Clear placeholder
     setPlaceholder(null);
-    setIsDraggingFromLibrary(false);
   };
 
   const handleDragLeave = () => {
     setPlaceholder(null);
-  };
-
-  const handleDragStart = () => {
-    setIsDraggingFromLibrary(true);
   };
 
   /**
@@ -324,9 +340,9 @@ export default function App() {
       {/* Renders the "ghost" gate that follows the cursor */}
       <DraggedGate gateInfo={draggedGate} />
 
-      <div className="w-full max-w-4xl mx-auto text-center mb-6 mt-4">
-        <h1 className="text-4xl font-bold text-cyan-400">Quantum Playground</h1>
-        <p className="text-gray-400 mt-2">A visual quantum circuit builder</p>
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold text-white">Quantum Playground</h1>
       </div>
 
       <div
@@ -348,13 +364,12 @@ export default function App() {
           numQubits={numQubits}
           onIncrease={handleIncreaseQubits}
           onDecrease={handleDecreaseQubits}
+          onClear={handleClearCircuit}
+          hasGates={placedGates.length > 0}
         />
       </div>
 
-      <GateLibrary
-        gateLibraryRef={gateLibraryRef}
-        onDragStart={handleDragStart}
-      />
+      <GateLibrary gateLibraryRef={gateLibraryRef} />
 
       <RunPanel numQubits={numQubits} gates={placedGates} />
     </div>
