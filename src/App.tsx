@@ -5,9 +5,16 @@ import QubitControls from "./components/QubitControls";
 import GateLibrary from "./components/GateLibrary";
 import DraggedGate from "./components/DraggedGate";
 import RunPanel from "./components/RunPanel";
-import { PADDING, QUBIT_SPACING } from "./constants/circuit";
 import {
-  findNextAvailableColumn,
+  PADDING,
+  QUBIT_SPACING,
+  CIRCUIT_START_X,
+  GATE_SIZE,
+} from "./constants/circuit";
+import {
+  findInsertionColumn,
+  buildVirtualGapDiff,
+  buildGapCloseDiff,
   compactGatesOnQubit,
   generateGateId,
   ensureGateIds,
@@ -37,6 +44,14 @@ export default function App() {
     qubit: number;
     col: number;
   } | null>(null);
+  // Virtual layout shows where gates will be after drop (with gap for insertion)
+  const [virtualLayout, setVirtualLayout] = useState<PlacedGate[] | null>(null);
+  // Track previous placeholder to detect gap changes
+  const prevPlaceholderRef = useRef<{ qubit: number; col: number } | null>(
+    null
+  );
+  // Track last mouse position for minimum delta threshold (10px) before gap animation
+  const lastGapMousePosRef = useRef<{ x: number; y: number } | null>(null);
   const [gateAnimations, setGateAnimations] = useState<GateAnimation[]>([]);
   const [deletionAnimations, setDeletionAnimations] = useState<
     GateDeletionAnimation[]
@@ -44,6 +59,58 @@ export default function App() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const circuitContainerRef = useRef<HTMLDivElement>(null);
   const gateLibraryRef = useRef<HTMLDivElement>(null);
+
+  // --- Shared helpers to centralize gap logic ---
+  const setAnimationsFromMoved = (
+    moved: Array<{ id: string; fromCol: number; toCol: number }>
+  ) => {
+    if (!moved || moved.length === 0) return;
+    setGateAnimations(
+      moved.map((m) => ({
+        id: m.id,
+        fromCol: m.fromCol,
+        toCol: m.toCol,
+        progress: 0,
+      }))
+    );
+  };
+
+  const applyGapAt = (
+    qubit: number,
+    col: number,
+    dragged: { qubit: number; col: number } | null,
+    mouseX: number,
+    mouseY: number
+  ) => {
+    const prevPh = prevPlaceholderRef.current;
+    const changed = !prevPh || prevPh.qubit !== qubit || prevPh.col !== col;
+    if (!changed) return;
+
+    // Minimum cursor movement threshold (10px) to avoid jitter
+    const lastPos = lastGapMousePosRef.current;
+    if (lastPos) {
+      const deltaX = Math.abs(mouseX - lastPos.x);
+      const deltaY = Math.abs(mouseY - lastPos.y);
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      if (distance < 10) return; // Skip if cursor moved less than 10px
+    }
+    lastGapMousePosRef.current = { x: mouseX, y: mouseY };
+
+    const diff = buildVirtualGapDiff(placedGates, virtualLayout, qubit, col, dragged);
+    setAnimationsFromMoved(diff.movedGates);
+    setPlaceholder({ qubit, col });
+    prevPlaceholderRef.current = { qubit, col };
+    setVirtualLayout(diff.virtualGates);
+  };
+
+  const animateCloseGap = () => {
+    const moved = buildGapCloseDiff(placedGates, virtualLayout);
+    setAnimationsFromMoved(moved);
+    prevPlaceholderRef.current = null;
+    lastGapMousePosRef.current = null; // Reset mouse position tracking
+    setPlaceholder(null);
+    setVirtualLayout(null);
+  };
 
   // Save to localStorage whenever circuit changes
   useEffect(() => {
@@ -85,17 +152,24 @@ export default function App() {
     if (!circuitContainerRef.current) return;
 
     const rect = circuitContainerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
     // Calculate which qubit the cursor is over
     const closestQubit = Math.round((y - PADDING) / QUBIT_SPACING);
     const qubit = Math.max(0, Math.min(numQubits - 1, closestQubit));
 
-    // Calculate the column where the gate would be placed
-    const col = findNextAvailableColumn(qubit, placedGates);
+    // Calculate insertion column based on cursor X position (smartphone-style)
+    const col = findInsertionColumn(
+      x,
+      qubit,
+      placedGates,
+      CIRCUIT_START_X,
+      GATE_SIZE
+    );
 
-    // Update placeholder
-    setPlaceholder({ qubit, col });
+    // Apply or move gap for library drag using shared helper
+    applyGapAt(qubit, col, null, e.clientX, e.clientY);
   };
 
   /**
@@ -107,6 +181,7 @@ export default function App() {
     if (!gateType || draggedGate || !circuitContainerRef.current) return; // Only allow drops from library
 
     const rect = circuitContainerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
     // Find the closest qubit wire to the drop position
@@ -117,29 +192,62 @@ export default function App() {
       // Ensure all gates have IDs
       const gatesWithIds = ensureGateIds(prev);
 
-      // Find the first available column on this wire
-      const col = findNextAvailableColumn(qubit, gatesWithIds);
-      const newGates = [...gatesWithIds];
+      // Calculate insertion column based on cursor X position
+      const insertionIndex = findInsertionColumn(
+        x,
+        qubit,
+        gatesWithIds,
+        CIRCUIT_START_X,
+        GATE_SIZE
+      );
+
+      // Get gates on target qubit, sorted
+      const gatesOnQubit = gatesWithIds
+        .filter((g) => g.qubit === qubit)
+        .sort((a, b) => a.col - b.col);
+      const otherGates = gatesWithIds.filter((g) => g.qubit !== qubit);
+
+      // Create the new gate
       const newGate: PlacedGate = {
         type: gateType as PlacedGate["type"],
         qubit,
-        col,
+        col: insertionIndex,
         id: generateGateId({
           type: gateType as PlacedGate["type"],
           qubit,
-          col,
+          col: insertionIndex,
         }),
       };
-      newGates.push(newGate);
-      return newGates;
+
+      // Rebuild gates on qubit with proper column indices
+      const updatedGatesOnQubit = [
+        ...gatesOnQubit
+          .slice(0, insertionIndex)
+          .map((g, i) => ({ ...g, col: i })),
+        newGate,
+        ...gatesOnQubit
+          .slice(insertionIndex)
+          .map((g, i) => ({ ...g, col: i + insertionIndex + 1 })),
+      ];
+
+      return [...otherGates, ...updatedGatesOnQubit];
     });
 
-    // Clear placeholder
+    // Clear placeholder and virtual layout
+    prevPlaceholderRef.current = null;
     setPlaceholder(null);
+    setVirtualLayout(null);
   };
 
   const handleDragLeave = () => {
-    setPlaceholder(null);
+    // If a gap exists (library drag), animate closing using shared helper
+    if (!draggedGate && virtualLayout && virtualLayout.length > 0) {
+      animateCloseGap();
+    } else {
+      prevPlaceholderRef.current = null;
+      setPlaceholder(null);
+      setVirtualLayout(null);
+    }
   };
 
   /**
@@ -147,6 +255,17 @@ export default function App() {
    */
   const handleGateMouseDown = (e: React.MouseEvent, gate: PlacedGate) => {
     setDraggedGate({ ...gate, x: e.clientX, y: e.clientY });
+    
+    // Immediately create virtual layout with the dragged gate removed and compacted
+    // to prevent "black hole" effect
+    const gatesWithIds = ensureGateIds(placedGates);
+    const gatesWithoutDragged = gatesWithIds.filter(
+      (g) => !(g.qubit === gate.qubit && g.col === gate.col)
+    );
+    
+    // Compact the qubit to close the gap left by the dragged gate
+    const compactResult = compactGatesOnQubit(gatesWithoutDragged, gate.qubit);
+    setVirtualLayout(compactResult.gates);
   };
 
   /**
@@ -205,7 +324,7 @@ export default function App() {
           prev ? { ...prev, x: e.clientX, y: e.clientY } : null
         );
 
-        // Update placeholder position if over circuit
+        // Update placeholder position and virtual layout if over circuit
         if (circuitContainerRef.current) {
           const rect = circuitContainerRef.current.getBoundingClientRect();
 
@@ -215,22 +334,31 @@ export default function App() {
             e.clientY >= rect.top &&
             e.clientY <= rect.bottom
           ) {
+            const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             const closestQubit = Math.round((y - PADDING) / QUBIT_SPACING);
             const qubit = Math.max(0, Math.min(numQubits - 1, closestQubit));
 
-            // Calculate column based on current placed gates
-            const col = findNextAvailableColumn(qubit, placedGates);
+            // Calculate insertion column based on cursor X position (smartphone-style)
+            const col = findInsertionColumn(
+              x,
+              qubit,
+              placedGates,
+              CIRCUIT_START_X,
+              GATE_SIZE
+            );
 
-            // Only update placeholder if position actually changed
-            setPlaceholder((prev) => {
-              if (prev && prev.qubit === qubit && prev.col === col) {
-                return prev; // No change, avoid re-render
-              }
-              return { qubit, col };
-            });
+            // Apply or move gap for circuit drag using shared helper
+            applyGapAt(qubit, col, draggedGate, e.clientX, e.clientY);
           } else {
-            setPlaceholder(null);
+            // When leaving circuit, animate closing the gap via shared helper
+            if (virtualLayout && virtualLayout.length > 0) {
+              animateCloseGap();
+            } else {
+              prevPlaceholderRef.current = null;
+              setPlaceholder(null);
+              setVirtualLayout(null);
+            }
           }
         }
       }
@@ -290,6 +418,7 @@ export default function App() {
         e.clientY >= circuitRect.top &&
         e.clientY <= circuitRect.bottom
       ) {
+        const x = e.clientX - circuitRect.left;
         const y = e.clientY - circuitRect.top;
 
         const closestQubit = Math.round((y - PADDING) / QUBIT_SPACING);
@@ -304,49 +433,56 @@ export default function App() {
             (g) => !(g.qubit === draggedGate.qubit && g.col === draggedGate.col)
           );
 
-          // Find the next available column on the target qubit (before compaction)
-          const col = findNextAvailableColumn(qubit, gatesWithoutDragged);
+          // Calculate insertion column based on cursor position
+          const insertionIndex = findInsertionColumn(
+            x,
+            qubit,
+            gatesWithoutDragged,
+            CIRCUIT_START_X,
+            GATE_SIZE
+          );
 
-          // Add the gate to its new position - REUSE the existing ID
+          // Get gates on target qubit, sorted
+          const gatesOnQubit = gatesWithoutDragged
+            .filter((g) => g.qubit === qubit)
+            .sort((a, b) => a.col - b.col);
+          const otherGates = gatesWithoutDragged.filter(
+            (g) => g.qubit !== qubit
+          );
+
+          // Insert the gate at the insertion point and reassign columns
           const newGate: PlacedGate = {
             type: draggedGate.type,
             qubit,
-            col,
+            col: insertionIndex, // Will be in sequence
             id:
               draggedGate.id ||
-              generateGateId({ type: draggedGate.type, qubit, col }),
+              generateGateId({
+                type: draggedGate.type,
+                qubit,
+                col: insertionIndex,
+              }),
           };
-          const gatesWithNew = [...gatesWithoutDragged, newGate];
 
-          // Compact the qubit (only if moving on same qubit, otherwise skip)
-          // This ensures the moved gate slides left with the others
-          let updatedGates = gatesWithNew;
-          if (qubit === draggedGate.qubit) {
-            const compactResult = compactGatesOnQubit(gatesWithNew, qubit);
-            updatedGates = compactResult.gates;
+          // Rebuild gates on qubit with proper column indices
+          const updatedGatesOnQubit = [
+            ...gatesOnQubit
+              .slice(0, insertionIndex)
+              .map((g, i) => ({ ...g, col: i })),
+            newGate,
+            ...gatesOnQubit
+              .slice(insertionIndex)
+              .map((g, i) => ({ ...g, col: i + insertionIndex + 1 })),
+          ];
 
-            // Trigger animations for moved gates
-            if (compactResult.movedGates.length > 0) {
-              setGateAnimations(
-                compactResult.movedGates.map((moved) => ({
-                  id: moved.id,
-                  fromCol: moved.fromCol,
-                  toCol: moved.toCol,
-                  progress: 0,
-                }))
-              );
-            }
-          } else {
-            // If moving to a different qubit, compact the old qubit
+          // If moving from a different qubit, compact the old qubit
+          let finalGates = [...otherGates, ...updatedGatesOnQubit];
+          if (qubit !== draggedGate.qubit) {
             const compactResult = compactGatesOnQubit(
-              gatesWithoutDragged,
+              finalGates,
               draggedGate.qubit
             );
-            // compactResult.gates already contains:
-            // 1. Gates NOT on the old qubit (includes gates on the new qubit)
-            // 2. Compacted gates from the old qubit
-            // So we just need to add the new gate
-            updatedGates = [...compactResult.gates, newGate];
+            finalGates = compactResult.gates;
 
             // Trigger animations for moved gates on the old qubit
             if (compactResult.movedGates.length > 0) {
@@ -361,13 +497,15 @@ export default function App() {
             }
           }
 
-          return updatedGates;
+          return finalGates;
         });
       }
       // If dropped anywhere else, it snaps back (by doing nothing and just stopping the drag)
 
+      prevPlaceholderRef.current = null;
       setDraggedGate(null);
       setPlaceholder(null);
+      setVirtualLayout(null);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
@@ -376,7 +514,7 @@ export default function App() {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [draggedGate, placedGates, numQubits]);
+  }, [draggedGate, placedGates, numQubits, placeholder]);
 
   // Animation loop for sliding gates
   useEffect(() => {
@@ -386,14 +524,20 @@ export default function App() {
     const startTime = Date.now();
     let animationFrameId: number;
 
+    // Ease-out cubic easing function for smooth deceleration
+    const easeOutCubic = (t: number): number => {
+      return 1 - Math.pow(1 - t, 3);
+    };
+
     const animate = () => {
       const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
+      const linearProgress = Math.min(elapsed / ANIMATION_DURATION, 1);
+      const easedProgress = easeOutCubic(linearProgress);
 
-      if (progress < 1) {
-        // Update animation progress
+      if (linearProgress < 1) {
+        // Update animation progress with easing
         setGateAnimations((prev) =>
-          prev.map((anim) => ({ ...anim, progress }))
+          prev.map((anim) => ({ ...anim, progress: easedProgress }))
         );
         animationFrameId = requestAnimationFrame(animate);
       } else {
@@ -489,7 +633,7 @@ export default function App() {
       >
         <QuantumCircuit
           numQubits={numQubits}
-          placedGates={placedGates}
+          placedGates={virtualLayout || placedGates}
           onGateMouseDown={handleGateMouseDown}
           onGateContextMenu={handleGateContextMenu}
           draggedGate={draggedGate}
