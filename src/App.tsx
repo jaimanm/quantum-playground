@@ -96,7 +96,13 @@ export default function App() {
     }
     lastGapMousePosRef.current = { x: mouseX, y: mouseY };
 
-    const diff = buildVirtualGapDiff(placedGates, virtualLayout, qubit, col, dragged);
+    const diff = buildVirtualGapDiff(
+      placedGates,
+      virtualLayout,
+      qubit,
+      col,
+      dragged
+    );
     setAnimationsFromMoved(diff.movedGates);
     setPlaceholder({ qubit, col });
     prevPlaceholderRef.current = { qubit, col };
@@ -255,14 +261,14 @@ export default function App() {
    */
   const handleGateMouseDown = (e: React.MouseEvent, gate: PlacedGate) => {
     setDraggedGate({ ...gate, x: e.clientX, y: e.clientY });
-    
+
     // Immediately create virtual layout with the dragged gate removed and compacted
     // to prevent "black hole" effect
     const gatesWithIds = ensureGateIds(placedGates);
     const gatesWithoutDragged = gatesWithIds.filter(
       (g) => !(g.qubit === gate.qubit && g.col === gate.col)
     );
-    
+
     // Compact the qubit to close the gap left by the dragged gate
     const compactResult = compactGatesOnQubit(gatesWithoutDragged, gate.qubit);
     setVirtualLayout(compactResult.gates);

@@ -201,16 +201,21 @@ export const buildVirtualGapDiff = (
     draggedGate
   );
 
-  const previousLayout = currentVirtualLayout && currentVirtualLayout.length > 0
-    ? currentVirtualLayout
-    : placedGates;
+  const previousLayout =
+    currentVirtualLayout && currentVirtualLayout.length > 0
+      ? currentVirtualLayout
+      : placedGates;
 
   const moved: Array<{ id: string; fromCol: number; toCol: number }> = [];
   previousLayout.forEach((prevGate) => {
     if (!prevGate.id) return;
     const nextGate = virtualResult.gates.find((g) => g.id === prevGate.id);
     if (nextGate && nextGate.col !== prevGate.col) {
-      moved.push({ id: prevGate.id, fromCol: prevGate.col, toCol: nextGate.col });
+      moved.push({
+        id: prevGate.id,
+        fromCol: prevGate.col,
+        toCol: nextGate.col,
+      });
     }
   });
 
@@ -231,7 +236,11 @@ export const buildGapCloseDiff = (
     if (!gapGate.id) return;
     const baselineGate = placedGates.find((g) => g.id === gapGate.id);
     if (baselineGate && baselineGate.col !== gapGate.col) {
-      moved.push({ id: gapGate.id, fromCol: gapGate.col, toCol: baselineGate.col });
+      moved.push({
+        id: gapGate.id,
+        fromCol: gapGate.col,
+        toCol: baselineGate.col,
+      });
     }
   });
   return moved;
