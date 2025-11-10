@@ -11,7 +11,7 @@ interface GateLibraryProps {
  * Displays available quantum gates that can be dragged onto the circuit
  */
 const GateLibrary: React.FC<GateLibraryProps> = ({ gateLibraryRef }) => {
-  const gates: GateType[] = ["X", "Y", "Z", "H"];
+  const gates: (GateType | "M")[] = ["X", "Y", "Z", "H", "M"];
   return (
     <div
       ref={gateLibraryRef}

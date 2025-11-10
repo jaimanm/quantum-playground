@@ -39,6 +39,13 @@ export const GATE_COLORS: Record<GateType | "DEFAULT", GateColors> = {
     canvasBg: "rgba(252, 211, 77, 0.85)",
     canvasBorder: "#fde68a",
   },
+  M: {
+    bg: "bg-gray-400",
+    hoverBg: "hover:bg-gray-300",
+    border: "border-gray-200",
+    canvasBg: "rgba(156, 163, 175, 0.85)",
+    canvasBorder: "#d1d5db",
+  },
   DEFAULT: {
     bg: "bg-cyan-400",
     hoverBg: "hover:bg-cyan-300",

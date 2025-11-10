@@ -36,6 +36,7 @@ class SimulationRequest(BaseModel):
 class SimulationResponse(BaseModel):
     """Simulation results"""
     numQubits: int
+    statevector: List[Dict[str, float]]  # List of {re, im} for each amplitude
     probabilities: Dict[str, float]
     samples: Optional[List[Dict[str, int | str]]] = None
     metadata: Dict[str, float]

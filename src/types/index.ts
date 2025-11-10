@@ -10,7 +10,7 @@ export interface GateColors {
   canvasBorder: string;
 }
 
-export type GateType = "X" | "Y" | "Z" | "H";
+export type GateType = "X" | "Y" | "Z" | "H" | "M";
 
 export interface PlacedGate {
   type: GateType;

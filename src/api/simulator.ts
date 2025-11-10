@@ -26,6 +26,7 @@ export interface SimSample {
 
 export interface SimResponse {
   numQubits: number;
+  statevector: Array<{ re: number; im: number }>;
   probabilities: Record<string, number>;
   samples?: SimSample[];
   metadata: {

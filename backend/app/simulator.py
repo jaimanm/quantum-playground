@@ -47,8 +47,8 @@ def _build_circuit(circuit_data: Dict) -> Tuple[QuantumCircuit, int]:
                 gate_method = getattr(qc, GATE_MAP[gate_type])
                 gate_method(qubit)
     
-    # Reverse qubit ordering to match big-endian convention (q0 leftmost)
-    qc = qc.reverse_bits()
+    # Use little-endian convention (q0 is LSB, rightmost bit)
+    # Qiskit uses this by default, so no reverse_bits() needed
     
     return qc, n
 
@@ -82,7 +82,7 @@ def get_probabilities(state: List[complex], n: int) -> Dict[str, float]:
     
     Returns:
         Dict mapping bitstrings to probabilities (only non-zero entries)
-        Bitstrings are in big-endian format (q0 is leftmost)
+        Bitstrings are in little-endian format (q0 is rightmost/LSB)
     """
     # Create Qiskit Statevector object
     statevector = Statevector(state)

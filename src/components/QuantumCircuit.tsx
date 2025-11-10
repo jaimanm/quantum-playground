@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import type {
   PlacedGate,
   DraggedGateInfo,
@@ -40,6 +40,18 @@ const QuantumCircuit: React.FC<QuantumCircuitProps> = ({
   deletionAnimations,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const measurementImgRef = useRef<HTMLImageElement | null>(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  // Load measurement gate image
+  useEffect(() => {
+    const img = new Image();
+    img.src = "/quantum_measurement.png";
+    img.onload = () => {
+      measurementImgRef.current = img;
+      setImgLoaded(true);
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -189,16 +201,28 @@ const QuantumCircuit: React.FC<QuantumCircuitProps> = ({
         ctx.lineWidth = GATE_BORDER_WIDTH;
         ctx.stroke();
 
-        // Draw gate text
-        ctx.fillStyle = GATE_TEXT_COLOR;
-        ctx.font = "bold 24px monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(
-          gate.type,
-          gateCellX + GATE_SIZE / 2,
-          gateCellY + GATE_SIZE / 2
-        );
+        // Draw gate text or icon
+        if (gate.type === "M") {
+          // Draw measurement icon from PNG
+          const img = measurementImgRef.current;
+          if (img && img.complete) {
+            const imgHeight = drawnGateSize * 0.6; // Use 70% of gate size for height
+            const imgWidth = imgHeight * (img.width / img.height); // Preserve aspect ratio
+            const imgX = gateCellX + (GATE_SIZE - imgWidth) / 2;
+            const imgY = gateCellY + (GATE_SIZE - imgHeight) / 2;
+            ctx.drawImage(img, imgX, imgY, imgWidth, imgHeight);
+          }
+        } else {
+          ctx.fillStyle = GATE_TEXT_COLOR;
+          ctx.font = "bold 24px monospace";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(
+            gate.type,
+            gateCellX + GATE_SIZE / 2,
+            gateCellY + GATE_SIZE / 2
+          );
+        }
 
         // Restore context if we applied deletion animation
         if (deletionAnim) {
@@ -246,6 +270,7 @@ const QuantumCircuit: React.FC<QuantumCircuitProps> = ({
     placeholder,
     gateAnimations,
     deletionAnimations,
+    imgLoaded,
   ]); // Redraw when state changes
 
   /**

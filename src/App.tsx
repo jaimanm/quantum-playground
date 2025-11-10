@@ -219,23 +219,16 @@ export default function App() {
             const closestQubit = Math.round((y - PADDING) / QUBIT_SPACING);
             const qubit = Math.max(0, Math.min(numQubits - 1, closestQubit));
 
-            // Calculate where the gate would land (excluding the dragged gate itself)
-            const gatesWithoutDragged = placedGates.filter(
-              (g) =>
-                !(g.qubit === draggedGate.qubit && g.col === draggedGate.col)
-            );
+            // Calculate column based on current placed gates
+            const col = findNextAvailableColumn(qubit, placedGates);
 
-            let tempGates = gatesWithoutDragged;
-            if (qubit !== draggedGate.qubit) {
-              const compactResult = compactGatesOnQubit(
-                tempGates,
-                draggedGate.qubit
-              );
-              tempGates = compactResult.gates;
-            }
-
-            const col = findNextAvailableColumn(qubit, tempGates);
-            setPlaceholder({ qubit, col });
+            // Only update placeholder if position actually changed
+            setPlaceholder((prev) => {
+              if (prev && prev.qubit === qubit && prev.col === col) {
+                return prev; // No change, avoid re-render
+              }
+              return { qubit, col };
+            });
           } else {
             setPlaceholder(null);
           }
@@ -349,19 +342,11 @@ export default function App() {
               gatesWithoutDragged,
               draggedGate.qubit
             );
-            // Replace gates not on either qubit with compacted old qubit gates
-            const otherGates = gatesWithoutDragged.filter(
-              (g) => g.qubit !== draggedGate.qubit && g.qubit !== qubit
-            );
-            const newQubitGates = gatesWithoutDragged.filter(
-              (g) => g.qubit === qubit
-            );
-            updatedGates = [
-              ...otherGates,
-              ...compactResult.gates,
-              ...newQubitGates,
-              newGate,
-            ];
+            // compactResult.gates already contains:
+            // 1. Gates NOT on the old qubit (includes gates on the new qubit)
+            // 2. Compacted gates from the old qubit
+            // So we just need to add the new gate
+            updatedGates = [...compactResult.gates, newGate];
 
             // Trigger animations for moved gates on the old qubit
             if (compactResult.movedGates.length > 0) {

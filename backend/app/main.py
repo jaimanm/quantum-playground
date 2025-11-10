@@ -62,6 +62,9 @@ def simulate_circuit(req: SimulationRequest):
     state = simulate(circuit_dict)
     probabilities = get_probabilities(state, req.circuit.numQubits)
     
+    # Convert statevector to JSON-serializable format
+    statevector = [{"re": float(amp.real), "im": float(amp.imag)} for amp in state]
+    
     # Optional sampling
     samples = None
     if req.shots:
@@ -71,6 +74,7 @@ def simulate_circuit(req: SimulationRequest):
     
     return SimulationResponse(
         numQubits=req.circuit.numQubits,
+        statevector=statevector,
         probabilities=probabilities,
         samples=samples,
         metadata={"durationMs": duration_ms}
